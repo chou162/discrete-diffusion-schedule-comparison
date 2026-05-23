@@ -26,7 +26,7 @@ discrete_diffusion/
 └── README.md
 ```
 
-## Quickstart (runs on free Colab T4 in ~2–3 hrs)
+## Quickstart (runs on free Colab T4 in ~1-2 hrs)
 
 ```bash
 pip install torch datasets tqdm matplotlib numpy
@@ -34,6 +34,17 @@ python run_experiment.py
 ```
 
 Results saved to `results/` — recovery curves, perplexity comparison, token entropy plots.
+
+## Results
+
+![Recovery curves](results/recovery_curve_detail.png)
+
+The uniform schedule substantially outperformed absorbing under a floored linear
+noise schedule — achieving 50% token recovery at noise level α=0.51 while absorbing
+failed to cross that threshold (val loss 2.83 vs 4.48 at convergence). This suggests
+that uniform's broader supervision signal — training on all positions rather than only
+masked ones — provides more consistent gradient flow, connecting directly to training
+efficiency questions in discrete diffusion LMs.
 
 ## Key Concepts
 
