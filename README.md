@@ -1,8 +1,9 @@
 # Discrete Diffusion: Corruption Schedule Comparison
 
-A minimal empirical study comparing **absorbing** vs. **uniform** corruption schedules
-in discrete diffusion models for text, directly inspired by work from Prof. Ruqi Zhang's
-group at Purdue on discrete diffusion and diffusion LLMs.
+A small project comparing two corruption schedules — absorbing and uniform — in 
+discrete diffusion models for text. Built to get more experience with how 
+diffusion works on discrete data like language, and specifically to understand 
+how the choice of noise schedule affects what the model learns.
 
 ## Research Question
 
@@ -39,16 +40,27 @@ Results saved to `results/` — recovery curves, perplexity comparison, token en
 
 ![Recovery curves](results/recovery_curve_detail.png)
 
-The uniform schedule substantially outperformed absorbing under a floored linear
-noise schedule — achieving 50% token recovery at noise level α=0.51 while absorbing
-failed to cross that threshold (val loss 2.83 vs 4.48 at convergence). This suggests
-that uniform's broader supervision signal — training on all positions rather than only
-masked ones — provides more consistent gradient flow, connecting directly to training
-efficiency questions in discrete diffusion LMs.
+The uniform schedule converged to a much lower validation loss than absorbing 
+(2.83 vs 4.48). It achieved 50% token recovery at noise level α=0.51 while 
+absorbing never crossed that threshold.
+
+My interpretation: under a floored linear noise schedule, absorbing only 
+computes loss at masked positions, which means the gradient signal gets sparse 
+at low timesteps. Uniform supervises every position at every step, which seems 
+to give the model more consistent signal to learn from — at the cost of harder 
+individual predictions. The entropy curves back this up: uniform's entropy 
+drops sharply at low noise while absorbing's stays flat, suggesting the 
+absorbing model never becomes confident in its predictions.
 
 ## Key Concepts
 
-- **Absorbing schedule**: tokens are independently masked to `[MASK]` with probability t/T
-- **Uniform schedule**: tokens are replaced with a uniformly random vocabulary token
-- **Recovery curve**: fraction of tokens correctly restored at each reverse diffusion step
-- **Token entropy**: model's uncertainty H(p) over the vocabulary at each timestep
+- **Absorbing schedule**: at each timestep t, tokens are independently replaced 
+  with a special [MASK] token with probability t/T. The model always knows which 
+  positions were corrupted.
+- **Uniform schedule**: tokens are replaced with a random vocabulary token with 
+  probability t/T. No explicit corruption signal — the model has to figure out 
+  which tokens are wrong from context.
+- **Recovery curve**: fraction of non-padding tokens correctly predicted at each 
+  reverse diffusion timestep
+- **Token entropy**: average H(p) = -Σ p log p of the model's output distribution, 
+  measuring how uncertain the model is at each noise level
