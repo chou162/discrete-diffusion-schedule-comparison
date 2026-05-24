@@ -20,35 +20,30 @@ from training.corruption import CorruptionSchedule
 from training.train import TrainResult
 
 
-# ── Data structures ───────────────────────────────────────────────────────────
 
 @dataclass
 class AnalysisResult:
     schedule_name  : str
-    timesteps      : np.ndarray         # (T,) array from T down to 1
-    recovery_curve : np.ndarray         # (T,) fraction correctly recovered
-    entropy_curve  : np.ndarray         # (T,) average token entropy
-    perplexity     : float              # scalar at t = T//2
+    timesteps      : np.ndarray         
+    recovery_curve : np.ndarray         
+    entropy_curve  : np.ndarray         
+    perplexity     : float             
 
-
-# ── Main analysis function ────────────────────────────────────────────────────
 
 @torch.no_grad()
 def analyze(
     result   : TrainResult,
     schedule : CorruptionSchedule,
-    x0_batch : torch.Tensor,          # (B, L) clean sequences for analysis
+    x0_batch : torch.Tensor,          
     device   : torch.device,
 ) -> AnalysisResult:
-    """
-    Run the three analyses for a single trained model + schedule.
-    x0_batch should be a representative sample (e.g. 256 sequences from val set).
-    """
+    """Run recovery, entropy, and perplexity analysis on a batch of clean sequences."""
+  
     model = result.model.to(device)
     model.eval()
 
     T          = schedule.T
-    timesteps  = np.arange(T, 0, -1)   # T, T-1, ..., 1
+    timesteps  = np.arange(T, 0, -1)   
     recoveries = np.zeros(T)
     entropies  = np.zeros(T)
 
@@ -58,28 +53,23 @@ def analyze(
     for i, t_val in enumerate(timesteps):
         t = torch.full((B,), t_val, dtype=torch.long, device=device)
 
-        # Corrupt clean sequences to noise level t
         xt     = schedule.corrupt(x0, t)
 
-        # Model predicts clean tokens
-        logits = model(xt, t)              # (B, L, V)
+        logits = model(xt, t)             
         probs  = torch.softmax(logits, dim=-1)
-        preds  = logits.argmax(dim=-1)     # (B, L)
+        preds  = logits.argmax(dim=-1)     
 
-        # ── Recovery: fraction of non-pad tokens correctly predicted ──────────
-        non_pad   = (x0 != schedule.pad_id)                # (B, L)
+        non_pad   = (x0 != schedule.pad_id)                
         correct   = (preds == x0) & non_pad
         recovery  = correct.sum().float() / non_pad.sum().float()
         recoveries[i] = recovery.item()
 
-        # ── Entropy: H(p) averaged over non-pad positions ────────────────────
-        # H(p) = -sum(p * log(p + eps)) per position, then averaged
         log_p   = torch.log(probs + 1e-12)
-        h       = -(probs * log_p).sum(dim=-1)             # (B, L)
+        h       = -(probs * log_p).sum(dim=-1)             
         entropy = h[non_pad].mean()
         entropies[i] = entropy.item()
 
-    # ── Perplexity at t = T//2 ────────────────────────────────────────────────
+    # Perplexity at t = T//2
     t_mid   = torch.full((B,), T // 2, dtype=torch.long, device=device)
     xt_mid  = schedule.corrupt(x0, t_mid)
     logits_mid = model(xt_mid, t_mid)
@@ -102,24 +92,15 @@ def analyze(
         perplexity     = perplexity,
     )
 
-
-# ── Plotting ─────────────────────────────────────────────────────────────────
-
 def plot_all(
     results       : list[AnalysisResult],
     train_results : list[TrainResult],
     save_dir      : str = "results",
 ) -> None:
-    """
-    Generate a 2×2 figure with four panels:
-      1. Recovery curves (main result)
-      2. Token entropy curves
-      3. Training loss curves
-      4. Summary bar chart (perplexity)
-    """
+    """Save a 2x2 comparison figure and a standalone recovery curve plot."""
+
     os.makedirs(save_dir, exist_ok=True)
 
-    # Color + style per schedule
     styles = {
         "absorbing": dict(color="#1a6faf", ls="-",  label="Absorbing (mask)"),
         "uniform":   dict(color="#c0392b", ls="--", label="Uniform noise"),
@@ -129,18 +110,16 @@ def plot_all(
     fig.patch.set_facecolor("white")
     gs  = gridspec.GridSpec(2, 2, figure=fig, hspace=0.38, wspace=0.32)
 
-    # ── Panel 1: Recovery curves ─────────────────────────────────────────────
     ax1 = fig.add_subplot(gs[0, 0])
     for r in results:
         s = styles[r.schedule_name]
-        # x-axis: noise level = t/T (0 = clean, 1 = fully corrupted)
         noise = r.timesteps / r.timesteps.max()
         ax1.plot(noise, r.recovery_curve, color=s["color"], ls=s["ls"],
                  lw=2, label=s["label"])
     ax1.set_xlabel("Noise level (t / T)")
     ax1.set_ylabel("Fraction tokens correctly recovered")
     ax1.set_title("Recovery curve", fontweight="bold")
-    ax1.set_xlim(1, 0)   # high noise on left → low noise on right
+    ax1.set_xlim(1, 0)   
     ax1.set_ylim(-0.02, 1.05)
     ax1.legend(fontsize=9)
     ax1.grid(True, alpha=0.3, lw=0.5)
@@ -148,7 +127,6 @@ def plot_all(
     ax1.text(0.98, 0.52, "50% recovery", ha="right", va="bottom",
              fontsize=7, color="gray", transform=ax1.get_xaxis_transform())
 
-    # ── Panel 2: Entropy curves ───────────────────────────────────────────────
     ax2 = fig.add_subplot(gs[0, 1])
     for r in results:
         s = styles[r.schedule_name]
@@ -162,7 +140,6 @@ def plot_all(
     ax2.legend(fontsize=9)
     ax2.grid(True, alpha=0.3, lw=0.5)
 
-    # ── Panel 3: Training loss curves ─────────────────────────────────────────
     ax3 = fig.add_subplot(gs[1, 0])
     for tr in train_results:
         s      = styles[tr.schedule_name]
@@ -177,7 +154,6 @@ def plot_all(
     ax3.legend(fontsize=8)
     ax3.grid(True, alpha=0.3, lw=0.5)
 
-    # ── Panel 4: Perplexity bar chart ──────────────────────────────────────────
     ax4    = fig.add_subplot(gs[1, 1])
     names  = [r.schedule_name.capitalize() for r in results]
     ppls   = [r.perplexity for r in results]
@@ -191,7 +167,6 @@ def plot_all(
     ax4.grid(True, axis="y", alpha=0.3, lw=0.5)
     ax4.set_ylim(0, max(ppls) * 1.25)
 
-    # ── Title & save ──────────────────────────────────────────────────────────
     fig.suptitle(
         "Discrete Diffusion: Absorbing vs. Uniform Corruption Schedules",
         fontsize=14, fontweight="bold", y=0.98,
@@ -210,10 +185,6 @@ def _plot_recovery_detail(
     save_dir : str,
     styles   : dict,
 ) -> None:
-    """
-    A larger, standalone version of the recovery curve with annotation —
-    the single most important result to include in an application or paper.
-    """
     fig, ax = plt.subplots(figsize=(8, 5))
     fig.patch.set_facecolor("white")
 
@@ -223,7 +194,7 @@ def _plot_recovery_detail(
         ax.plot(noise, r.recovery_curve, color=s["color"], ls=s["ls"],
                 lw=2.5, label=s["label"])
 
-        # Mark where recovery crosses 50%
+        # mark where recovery crosses 50%
         cross_idx = np.argmax(r.recovery_curve >= 0.5)
         if cross_idx > 0:
             n50 = noise[cross_idx]
@@ -250,12 +221,10 @@ def _plot_recovery_detail(
 
 
 def print_summary(results: list[AnalysisResult]) -> None:
-    """Print a readable summary table."""
     print("\n" + "═" * 60)
     print("  RESULTS SUMMARY")
     print("═" * 60)
     for r in results:
-        # Find noise level where recovery first hits 50% and 80%
         def first_above(threshold):
             idx = np.argmax(r.recovery_curve >= threshold)
             return r.timesteps[idx] / r.timesteps.max() if idx > 0 else float("nan")
