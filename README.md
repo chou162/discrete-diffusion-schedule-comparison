@@ -30,7 +30,8 @@ discrete_diffusion/
 ## Quickstart
 
 Tested on Google Colab free tier (T4 GPU, ~1-2 hrs). Switch to a T4 via
-Runtime → Change runtime type → T4 GPU before running.
+Runtime → Change runtime type → T4 GPU before running. When using Colab,
+prefix shell commands with `!` (e.g. `!git clone ...`, `!pip install ...`).
 
 **1. Clone the repository**
 ```bash
@@ -75,20 +76,7 @@ absorbing never crossed that threshold.
 My interpretation: under a floored linear noise schedule, absorbing only 
 computes loss at masked positions, which means the gradient signal gets sparse 
 at low timesteps. Uniform supervises every position at every step, which seems 
-to give the model more consistent signal to learn from — at the cost of harder 
+to give the model more consistent signal to learn from but at the cost of harder 
 individual predictions. The entropy curves back this up: uniform's entropy 
 drops sharply at low noise while absorbing's stays flat, suggesting the 
 absorbing model never becomes confident in its predictions.
-
-## Key Concepts
-
-- **Absorbing schedule**: at each timestep t, tokens are independently replaced 
-  with a special [MASK] token with probability t/T. The model always knows which 
-  positions were corrupted.
-- **Uniform schedule**: tokens are replaced with a random vocabulary token with 
-  probability t/T. No explicit corruption signal — the model has to figure out 
-  which tokens are wrong from context.
-- **Recovery curve**: fraction of non-padding tokens correctly predicted at each 
-  reverse diffusion timestep
-- **Token entropy**: average H(p) = -Σ p log p of the model's output distribution, 
-  measuring how uncertain the model is at each noise level
