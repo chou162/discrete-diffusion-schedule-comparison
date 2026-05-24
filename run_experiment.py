@@ -1,19 +1,10 @@
 """
-run_experiment.py
------------------
-Main entry point. Trains both corruption schedules and produces analysis plots.
+Trains both corruption schedules and saves comparison plots to results/.
 
 Usage:
-    python run_experiment.py                    # full run (15 epochs)
-    python run_experiment.py --epochs 3         # quick smoke test
-    python run_experiment.py --no-train         # analysis only (needs saved checkpoints)
-    python run_experiment.py --schedule absorbing  # single schedule
-
-Outputs (written to results/):
-    checkpoints/absorbing_model.pt
-    checkpoints/uniform_model.pt
-    results.png                  -- 2x2 comparison figure
-    recovery_curve_detail.png    -- publication-quality recovery plot
+    python run_experiment.py                      # full run
+    python run_experiment.py --epochs 3           # quick test
+    python run_experiment.py --schedule absorbing # one schedule only
 """
 
 import os
