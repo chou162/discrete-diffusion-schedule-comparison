@@ -1,19 +1,9 @@
 """
-training/train.py
------------------
-Training loop for a single CorruptionSchedule + TransformerDenoiser pair.
+Training loop for a single schedule + model pair.
 
-Loss function: cross-entropy at every non-padding position.
-
-  L(θ) = -E_{x0, t} [ Σ_i log p_θ(x0_i | x_t, t)  for i where x0_i ≠ pad ]
-
-We sample t uniformly from {1, ..., T} for each batch element. This is
-equivalent to training across all noise levels simultaneously.
-
-For ABSORBING schedule: loss is computed only at masked positions.
-For UNIFORM schedule:   loss is computed at all non-padding positions.
-
-(Both choices follow the training conventions from their respective papers.)
+For absorbing: loss is computed only at masked positions.
+For uniform: loss is computed at all non-padding positions since
+we can't tell which tokens were replaced.
 """
 
 import os
