@@ -5,8 +5,7 @@ Takes a corrupted sequence x_t and timestep t, outputs logits over
 the vocabulary at each position. Trained with cross-entropy to predict
 the original clean token x_0.
 
-Timestep is encoded with sinusoidal embeddings (same idea as positional
-encodings) and added to every token's representation.
+Timestep is encoded with sinusoidal embeddings and added to every token's representation.
 """
 
 import math
@@ -16,14 +15,7 @@ import torch.nn.functional as F
 
 
 class SinusoidalTimestepEmbedding(nn.Module):
-    """
-    Maps scalar timestep t ∈ [0, T] to a d_model-dimensional vector
-    using sinusoidal frequencies, then projects through a 2-layer MLP.
-
-    This is identical in spirit to positional encodings in the original
-    Transformer paper, but applied to the diffusion timestep instead of
-    sequence position.
-    """
+    """Sinusoidal embedding for the diffusion timestep t."""
 
     def __init__(self, d_model: int, max_period: int = 10_000):
         super().__init__()
