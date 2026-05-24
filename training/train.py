@@ -188,14 +188,9 @@ def _loss_mask(
     x0       : torch.Tensor,    # (B, L) clean
     pad_id   : int,
 ) -> torch.Tensor:
-    """
-    Which positions contribute to the loss?
-
-    ABSORBING: only positions that were masked (xt == mask_id).
-               We know exactly where the corruptions are.
-    UNIFORM:   all non-padding positions.
-               We can't tell which tokens were replaced, so we supervise all.
-    """
+    # Absorbing: supervise only masked positions
+    # Uniform: supervise everything since we can't identify corrupted positions
+    
     if schedule.schedule_type == ScheduleType.ABSORBING:
         return (xt == schedule.mask_id) & (x0 != pad_id)
     else:
