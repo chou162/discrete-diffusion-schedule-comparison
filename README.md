@@ -27,15 +27,37 @@ discrete_diffusion/
 └── README.md
 ```
 
-## Quickstart (runs on free Colab T4 in ~1-2 hrs)
+## Quickstart
 
+Tested on Google Colab free tier (T4 GPU, ~1-2 hrs). Switch to a T4 via
+Runtime → Change runtime type → T4 GPU before running.
+
+**1. Install dependencies**
 ```bash
 pip install torch datasets tqdm matplotlib numpy
-python run_experiment.py
 ```
 
-Results saved to `results/` — recovery curves, perplexity comparison, token entropy plots.
+**2. Download Penn Treebank**
+```python
+import urllib.request, os
+os.makedirs("data/ptb", exist_ok=True)
+urllib.request.urlretrieve(
+    "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.train.txt",
+    "data/ptb/train.txt"
+)
+urllib.request.urlretrieve(
+    "https://raw.githubusercontent.com/wojzaremba/lstm/master/data/ptb.valid.txt",
+    "data/ptb/valid.txt"
+)
+```
 
+**3. Run**
+```bash
+python run_experiment.py --epochs 30 --d-model 256 --n-layers 3 --batch 32 --lr 5e-5
+```
+
+Results are saved to `results/` — recovery curves, perplexity comparison,
+token entropy plots.
 ## Results
 
 ![Recovery curves](results/recovery_curve_detail.png)
