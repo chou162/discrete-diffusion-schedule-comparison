@@ -1,13 +1,7 @@
 """
-data/dataset.py
----------------
-Loads Penn Treebank (PTB) sentences and builds a simple word-level vocabulary.
-Uses Hugging Face `datasets` for easy access — no manual downloads needed.
-
-Why PTB?
-  - Small (~1M tokens), widely used in LM benchmarks
-  - Clean, pre-tokenized sentences
-  - Trainable on a single GPU in hours
+Loads Penn Treebank sentences from disk and builds a vocabulary
+capped at the 1000 most frequent tokens. Falls back to a small
+synthetic corpus if PTB files aren't found.
 """
 
 import re
