@@ -10,7 +10,6 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import torch
 
 
-# ── Special tokens ─────────────────────────────────────────────────────────────
 PAD_TOKEN   = "<pad>"
 UNK_TOKEN   = "<unk>"
 MASK_TOKEN  = "<mask>"
@@ -38,7 +37,6 @@ class Vocabulary:
     def __len__(self) -> int:
         return len(self.id2token)
 
-    # Convenience id properties
     @property
     def pad_id(self)  -> int: return self.token2id[PAD_TOKEN]
     @property
@@ -58,11 +56,8 @@ class Vocabulary:
 
 
 class PTBDataset(Dataset):
-    """
-    Penn Treebank sentences, padded/truncated to `max_len` tokens.
-    Each item is a LongTensor of token ids.
-    """
-
+    """Penn Treebank sentences as padded token id tensors."""
+    
     def __init__(
         self,
         sentences: list[list[str]],
@@ -77,7 +72,6 @@ class PTBDataset(Dataset):
         encoded = []
         for sent in sentences:
             ids = self.vocab.encode(sent[:self.max_len])
-            # Pad or truncate to max_len
             if len(ids) < self.max_len:
                 ids = ids + [self.vocab.pad_id] * (self.max_len - len(ids))
             encoded.append(torch.tensor(ids, dtype=torch.long))
@@ -91,7 +85,6 @@ class PTBDataset(Dataset):
 
 
 def _tokenize(text: str) -> list[str]:
-    """Lowercase + split on whitespace."""
     return text.lower().split()
 
 
@@ -101,13 +94,7 @@ def load_ptb(
     val_split: float = 0.1,
     seed: int = 42,
 ) -> tuple[DataLoader, DataLoader, Vocabulary]:
-    """
-    Downloads Penn Treebank via HuggingFace datasets, builds vocab, returns
-    (train_loader, val_loader, vocab).
-
-    Falls back to a small synthetic corpus if the dataset is unavailable
-    (useful for quick local testing without internet access).
-    """
+    """Load PTB, build vocab, return train/val dataloaders."""
     sentences = _load_sentences()
 
     vocab = Vocabulary(min_freq=2, max_size=1000)
@@ -133,7 +120,7 @@ def load_ptb(
 
 
 def _load_sentences() -> list[str]:
-    """Load PTB from local files downloaded from GitHub."""
+    """Load PTB from local disk files."""
     import os
     paths = ["data/ptb/train.txt", "data/ptb/valid.txt"]
     sents = []
@@ -149,7 +136,7 @@ def _load_sentences() -> list[str]:
 
 
 def _synthetic_corpus() -> list[str]:
-    """500 templated sentences as a fallback corpus for offline testing."""
+    """Small fallback corpus for offline testing."""
     templates = [
         "the {a} {v} the {b} in the {p}",
         "a {a} {n} {v} with the {b}",
