@@ -22,41 +22,30 @@ class ScheduleType(Enum):
 
 @dataclass
 class CorruptionSchedule:
-    """Encapsulates a corruption schedule with forward/reverse logic."""
 
     schedule_type : ScheduleType
-    T             : int    # total diffusion timesteps
+    T             : int    
     vocab_size    : int
     mask_id       : int    # only used by ABSORBING
-    pad_id        : int    # pad positions are never corrupted
-
-    # ── Noise schedule ──────────────────────────────────────────────────────────
+    pad_id        : int    
 
     def alpha(self, t: torch.Tensor) -> torch.Tensor:
         """Corruption probability at timestep t, floored at 0.1."""
         
         return 0.1 + 0.9 * (t.float() / self.T)
 
-    # ── Forward process: q(x_t | x_0) ──────────────────────────────────────────
-
     def corrupt(
         self,
-        x0 : torch.Tensor,   # (B, L) clean token ids
-        t  : torch.Tensor,   # (B,)   timestep per sample
+        x0 : torch.Tensor,   
+        t  : torch.Tensor,   
     ) -> torch.Tensor:
-        """
-        Apply corruption to clean sequences x0 at noise level t.
-        Returns x_t with the same shape as x0.
-
-        Padding positions (x0 == pad_id) are never corrupted.
-        """
+        """Corrupt x0 at noise level t, skipping padding."""
+        
         B, L   = x0.shape
         device = x0.device
 
-        # Broadcast alpha to (B, L)
         a = self.alpha(t).to(device).view(B, 1).expand(B, L)
 
-        # Bernoulli mask: which positions get corrupted
         corrupt_mask = torch.bernoulli(a).bool()
 
         # Never corrupt padding
@@ -94,18 +83,9 @@ class CorruptionSchedule:
             xt[corrupt_mask] = random_tokens
         return xt
 
-    # ── Reverse process helper ───────────────────────────────────────────────────
-
     def should_denoise(self, xt: torch.Tensor) -> torch.Tensor:
-        """
-        Boolean mask of positions the model should try to predict.
-
-        For ABSORBING: only masked positions need prediction.
-        For UNIFORM:   all non-pad positions need prediction (can't tell which
-                       ones were corrupted, so predict everything).
-
-        Shape: (B, L) bool
-        """
+        """Positions the model should predict (absorbing: masked only, uniform: everything)."""
+        
         if self.schedule_type == ScheduleType.ABSORBING:
             return xt == self.mask_id
         else:
@@ -113,9 +93,6 @@ class CorruptionSchedule:
 
     def name(self) -> str:
         return self.schedule_type.value
-
-
-# ── Factory ──────────────────────────────────────────────────────────────────
 
 def make_schedule(
     schedule_type : str | ScheduleType,
