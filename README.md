@@ -32,12 +32,18 @@ discrete_diffusion/
 Tested on Google Colab free tier (T4 GPU, ~1-2 hrs). Switch to a T4 via
 Runtime → Change runtime type → T4 GPU before running.
 
-**1. Install dependencies**
+**1. Clone the repository**
+```bash
+git clone https://github.com/chou162/discrete-diffusion-schedule-comparison.git
+cd discrete-diffusion-schedule-comparison
+```
+
+**2. Install dependencies**
 ```bash
 pip install torch datasets tqdm matplotlib numpy
 ```
 
-**2. Download Penn Treebank**
+**3. Download Penn Treebank**
 ```python
 import urllib.request, os
 os.makedirs("data/ptb", exist_ok=True)
@@ -51,7 +57,7 @@ urllib.request.urlretrieve(
 )
 ```
 
-**3. Run**
+**4. Run**
 ```bash
 python run_experiment.py --epochs 30 --d-model 256 --n-layers 3 --batch 32 --lr 5e-5
 ```
