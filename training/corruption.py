@@ -1,32 +1,13 @@
 """
-training/corruption.py
------------------------
-The two corruption schedules we compare:
+Two corruption schedules for discrete diffusion.
 
-  1. Absorbing (mask-based)
-     At timestep t, each token is independently replaced with [MASK]
-     with probability alpha(t) = t / T.
+Absorbing: corrupted tokens become [MASK], so the model knows exactly
+which positions to predict. Uniform: corrupted tokens become random
+vocabulary tokens, giving the model no explicit signal about where
+corruptions are.
 
-     This is the schedule used in MDLM (Sahoo et al., 2024) and BERT-style
-     masked diffusion. The model learns to "fill in" masked positions.
-
-     Key property: corrupted tokens carry NO information about the original.
-     The model always knows *which* positions need recovery (they're [MASK]).
-
-  2. Uniform noise
-     At timestep t, each token is replaced with a uniformly random
-     vocabulary token (including possibly itself) with probability alpha(t).
-
-     This is the schedule from the original D3PM paper and SEDD. The model
-     can't distinguish "already correct" from "randomly wrong" — it must
-     attend to context to decide.
-
-     Key property: corrupted tokens carry ~0 bits about the original at
-     high noise levels, but the model gets no explicit "corrupted here" signal.
-     This is harder to learn from and tests different inductive biases.
-
-Both schedules use a *linear* noise schedule: alpha(t) = t / T.
-You can swap in cosine or sqrt schedules by changing alpha().
+Both use a linear noise schedule with a 0.1 floor so there's always
+some corruption signal even at low timesteps.
 """
 
 import torch
