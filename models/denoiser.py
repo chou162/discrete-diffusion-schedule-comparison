@@ -1,24 +1,12 @@
 """
-models/denoiser.py
-------------------
-A small Transformer that predicts clean token ids from corrupted sequences.
+Transformer denoiser for discrete diffusion.
 
-Architecture overview:
-  - Token embedding (vocab_size → d_model)
-  - Sinusoidal timestep embedding (scalar t → d_model), added to every position
-  - N Transformer encoder layers with pre-LayerNorm (more stable than post-LN)
-  - Linear head: d_model → vocab_size
+Takes a corrupted sequence x_t and timestep t, outputs logits over
+the vocabulary at each position. Trained with cross-entropy to predict
+the original clean token x_0.
 
-Why a Transformer?
-  Discrete diffusion denoising requires attending to context — to fix a [MASK]
-  or a random token, the model needs to look at neighboring tokens. Self-attention
-  is the natural mechanism. Even a tiny 2-layer version captures local context.
-
-Timestep conditioning:
-  We embed the scalar timestep t using sinusoidal frequencies (same as DDPM
-  positional encoding) and add it as a bias to every token's embedding. This
-  tells the model "how noisy" the input is, which affects how confident its
-  predictions should be.
+Timestep is encoded with sinusoidal embeddings (same idea as positional
+encodings) and added to every token's representation.
 """
 
 import math
