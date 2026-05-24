@@ -19,28 +19,24 @@ from training.corruption import CorruptionSchedule, ScheduleType
 
 @dataclass
 class TrainConfig:
-    # Model
     d_model    : int   = 128
     n_heads    : int   = 4
     n_layers   : int   = 2
     d_ff       : int   = 256
     dropout    : float = 0.1
 
-    # Training
     n_epochs   : int   = 15
     lr         : float = 3e-4
     clip_grad  : float = 1.0
-    T          : int   = 100     # total diffusion timesteps
+    T          : int   = 100     
     max_seq_len: int   = 32
 
-    # Logging
-    log_every  : int   = 50      # steps between loss prints
+    log_every  : int   = 50      
     save_dir   : str   = "results/checkpoints"
 
 
 @dataclass
 class TrainResult:
-    """Stores everything we need for downstream analysis."""
     schedule_name : str
     model         : TransformerDenoiser
     train_losses  : list[float] = field(default_factory=list)
@@ -58,8 +54,7 @@ def train_model(
     device       : torch.device,
 ) -> TrainResult:
     """
-    Train one TransformerDenoiser with the given corruption schedule.
-    Returns a TrainResult with the trained model and loss history.
+    Train one TransformerDenoiser with the given schedule, return losses and trained model.
     """
     model = TransformerDenoiser(
         vocab_size  = vocab_size,
@@ -77,7 +72,6 @@ def train_model(
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=0.01)
 
-    # Cosine LR decay with warmup
     total_steps  = cfg.n_epochs * len(train_loader)
     warmup_steps = max(1, total_steps // 10)
     scheduler    = torch.optim.lr_scheduler.OneCycleLR(
@@ -94,20 +88,16 @@ def train_model(
         t0         = time.time()
 
         for batch in train_loader:
-            x0 = batch.to(device)                   # (B, L)
+            x0 = batch.to(device)                   
             B  = x0.size(0)
 
-            # Sample a random timestep for each sequence in the batch
             t = torch.randint(1, schedule.T + 1, (B,), device=device)
 
-            # Apply corruption: x0 → x_t
             xt = schedule.corrupt(x0, t)
 
-            # Forward pass
-            logits = model(xt, t)                   # (B, L, V)
+            logits = model(xt, t)                   
 
-            # Compute loss at positions the model should predict
-            loss_mask = _loss_mask(schedule, xt, x0, pad_id)  # (B, L) bool
+            loss_mask = _loss_mask(schedule, xt, x0, pad_id)  
 
             if loss_mask.sum() == 0:
                 continue
@@ -127,7 +117,6 @@ def train_model(
                 print(f"  step {step:4d} | loss {loss.item():.4f} | "
                       f"lr {scheduler.get_last_lr()[0]:.2e}")
 
-        # ── Validation ────────────────────────────────────────────────────────
         val_loss = evaluate(model, schedule, val_loader, pad_id, device)
         avg_train = epoch_loss / max(1, len(train_loader))
         elapsed   = time.time() - t0
@@ -140,7 +129,6 @@ def train_model(
               f"train {avg_train:.4f} | val {val_loss:.4f} | "
               f"{elapsed:.1f}s")
 
-    # Save checkpoint
     os.makedirs(cfg.save_dir, exist_ok=True)
     ckpt_path = os.path.join(cfg.save_dir, f"{schedule.name()}_model.pt")
     torch.save(model.state_dict(), ckpt_path)
@@ -157,7 +145,7 @@ def evaluate(
     pad_id     : int,
     device     : torch.device,
 ) -> float:
-    """Compute average cross-entropy loss on a DataLoader."""
+    """Validation loss"""
     model.eval()
     total_loss, total_batches = 0.0, 0
 
@@ -180,16 +168,13 @@ def evaluate(
     return total_loss / max(1, total_batches)
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
 def _loss_mask(
     schedule : CorruptionSchedule,
-    xt       : torch.Tensor,    # (B, L) corrupted
-    x0       : torch.Tensor,    # (B, L) clean
+    xt       : torch.Tensor,    
+    x0       : torch.Tensor,    
     pad_id   : int,
 ) -> torch.Tensor:
-    # Absorbing: supervise only masked positions
-    # Uniform: supervise everything since we can't identify corrupted positions
+    # absorbing: only masked positions; uniform: all non-padding positions
     
     if schedule.schedule_type == ScheduleType.ABSORBING:
         return (xt == schedule.mask_id) & (x0 != pad_id)
@@ -198,9 +183,9 @@ def _loss_mask(
 
 
 def _masked_cross_entropy(
-    logits : torch.Tensor,   # (B, L, V)
-    targets: torch.Tensor,   # (B, L)
-    mask   : torch.Tensor,   # (B, L) bool — positions to include
+    logits : torch.Tensor,   
+    targets: torch.Tensor,   
+    mask   : torch.Tensor,   
 ) -> torch.Tensor:
     """Cross-entropy loss averaged over masked positions."""
     B, L, V = logits.shape
