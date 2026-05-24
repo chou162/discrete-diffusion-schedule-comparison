@@ -33,13 +33,8 @@ class CorruptionSchedule:
     # ── Noise schedule ──────────────────────────────────────────────────────────
 
     def alpha(self, t: torch.Tensor) -> torch.Tensor:
-        """
-        Corruption probability at timestep t.
-        Linear schedule: alpha(t) = t / T.
-
-        Shape: same as t (scalar or batch).
-        Range: [0, 1] — 0 = clean, 1 = fully corrupted.
-        """
+        """Corruption probability at timestep t, floored at 0.1."""
+        
         return 0.1 + 0.9 * (t.float() / self.T)
 
     # ── Forward process: q(x_t | x_0) ──────────────────────────────────────────
