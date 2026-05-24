@@ -1,31 +1,8 @@
 """
-analysis/evaluate.py
----------------------
-Post-training analysis: the core scientific contribution of this project.
-
-Three metrics, each revealing a different aspect of how corruption schedule
-affects the denoising trajectory:
-
-1. Recovery curve
-   For each timestep t ∈ {T, T-1, ..., 1}, run ONE reverse step:
-   feed x_t into the model, take the argmax prediction, measure what
-   fraction of tokens are correctly restored.
-
-   Interpretation: does ABSORBING recover tokens earlier (at high t)?
-   Does UNIFORM lag behind? Is the gap uniform across timesteps or
-   concentrated at a particular noise level?
-
-2. Perplexity
-   Standard language modeling metric: exp(CE loss) at t = T//2 (medium noise).
-   Lower = better. Gives a single scalar to compare the two schedules.
-
-3. Token entropy
-   H(p) = -Σ p_i log p_i of the model's output distribution at each
-   timestep t. High entropy = uncertain, low = confident.
-
-   Interpretation: at what noise level does each model become confident
-   in its predictions? ABSORBING should become confident sharply once
-   masking falls below ~0.5. UNIFORM may show smoother entropy decay.
+Post-training analysis — three metrics:
+  1. Recovery curve: fraction of tokens correctly predicted at each timestep
+  2. Perplexity: exp(cross-entropy) at t = T/2
+  3. Token entropy: how uncertain the model is at each noise level
 """
 
 import os
